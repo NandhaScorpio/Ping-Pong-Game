@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pong Game</title>
+<style>
+    body {
+        margin: 0;
+        overflow: hidden;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: black;
+    }
+    canvas {
+        border: 2px solid white;
+        display: block;
+        margin: 0 auto;
+        image-rendering: pixelated; /* Enhance pixel rendering */
+    }
+    .score {
+        position: absolute;
+        color: white;
+        font-size: 24px;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+    .speed-control {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: white;
+        font-size: 18px;
+    }
+</style>
+</head>
+<body>
+<canvas id="pongCanvas" width="800" height="400"></canvas>
+<div class="score" id="score">0 - 0</div>
+<div class="speed-control">
+    <label for="speedRange">Game Speed:</label>
+    <input type="range" id="speedRange" min="1" max="10" value="5">
+</div>
+
+<script>
+    // Get canvas and context
+    const canvas = document.getElementById("pongCanvas");
+    const context = canvas.getContext("2d");
+
+    // Get score display element and speed range input
+    const scoreDisplay = document.getElementById("score");
+    const speedRange = document.getElementById("speedRange");
+
+    // Initialize scores
+    let scoreLeft = 0;
+    let scoreRight = 0;
+
+    // Ball object
+    const ball = {
+        x: canvas.width / 2,
+        y: canvas.height / 2,
+        radius: 8,
+        velocityX: 6,
+        velocityY: 6,
+        speed: 7,
+        color: "white",
+        trail: [] // Array to store ball trail
+    };
+
+    // Paddle dimensions
+    const paddleHeight = 80;
+    const paddleWidth = 10;
+
+    // Left paddle object
+    const leftPaddle = {
+        x: 10,
+        y: canvas.height / 2 - paddleHeight / 2,
+        color: "#2ecc71" // Green color for left paddle
+    };
+
+    // Right paddle object
+    const rightPaddle = {
+        x: canvas.width - paddleWidth - 10,
+        y: canvas.height / 2 - paddleHeight / 2,
+        color: "#3498db" // Blue color for right paddle
+    };
+
+    // Function to draw a paddle
+    function drawPaddle(x, y, color) {
+        context.fillStyle = color;
+        context.fillRect(x, y, paddleWidth, paddleHeight);
+    }
+
+    // Function to draw the ball
+    function drawBall() {
+        // Draw ball trail
+        for (let i = 0; i < ball.trail.length; i++) {
+            context.fillStyle = `rgba(255, 255, 255, ${1 - i * 0.1})`; // Decreasing opacity for trail effect
+            context.beginPath();
+            context.arc(ball.trail[i].x, ball.trail[i].y, ball.radius, 0, Math.PI * 2);
+            context.fill();
+            context.closePath();
+        }
+
+        // Draw current ball position
+        context.fillStyle = ball.color;
+        context.beginPath();
+        context.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+        context.fill();
+        context.closePath();
+    }
+
+    // Function to draw the game
+    function draw() {
+        // Clear canvas
+        context.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw paddles and ball
+        drawPaddle(leftPaddle.x, leftPaddle.y, leftPaddle.color);
+        drawPaddle(rightPaddle.x, rightPaddle.y, rightPaddle.color);
+        drawBall();
+
+        // Update ball trail
+        ball.trail.push({ x: ball.x, y: ball.y });
+        if (ball.trail.length > 5) {
+            ball.trail.shift();
+        }
+
+        // Update ball position
+        ball.x += ball.velocityX;
+        ball.y += ball.velocityY;
+
+        // Handle ball collisions and score update
+        handleCollisions();
+
+        // Update score display
+        scoreDisplay.textContent = scoreLeft + " - " + scoreRight;
+
+        // Check for game over condition
+        if (scoreLeft === 5 || scoreRight === 5) {
+            alert("Game Over!");
+            document.location.reload();
+        }
+
+        // Request animation frame
+        requestAnimationFrame(draw);
+    }
+
+    // Function to handle ball collisions and score update
+    function handleCollisions() {
+        // Collision with top and bottom walls
+        if (ball.y + ball.radius >= canvas.height || ball.y - ball.radius <= 0) {
+            ball.velocityY = -ball.velocityY;
+        }
+
+        // Collision with paddles
+        if (
+            ball.x - ball.radius <= leftPaddle.x + paddleWidth &&
+            ball.y >= leftPaddle.y &&
+            ball.y <= leftPaddle.y + paddleHeight
+        ) {
+            ball.velocityX = -ball.velocityX;
+            increaseBallSpeed(); // Increase ball speed when hitting the paddle
+        }
+
+        if (
+            ball.x + ball.radius >= rightPaddle.x &&
+            ball.y >= rightPaddle.y &&
+            ball.y <= rightPaddle.y + paddleHeight
+        ) {
+            ball.velocityX = -ball.velocityX;
+            increaseBallSpeed(); // Increase ball speed when hitting the paddle
+        }
+
+        // Score update and reset
+        if (ball.x + ball.radius >= canvas.width) {
+            scoreLeft++;
+            resetBall();
+        } else if (ball.x - ball.radius <= 0) {
+            scoreRight++;
+            resetBall();
+        }
+    }
+
+    // Function to reset the ball
+    function resetBall() {
+        ball.x = canvas.width / 2;
+        ball.y = canvas.height / 2;
+        ball.velocityX = -ball.velocityX;
+        ball.velocityY = -ball.velocityY;
+        ball.trail = []; // Clear ball trail
+        ball.speed = 7; // Reset ball speed
+    }
+
+    // Function to increase ball speed
+    function increaseBallSpeed() {
+        if (Math.abs(ball.velocityX) < 15) { // Limit maximum speed
+            ball.speed += 0.2; // Increase ball speed
+            ball.velocityX = (ball.velocityX > 0) ? ball.speed : -ball.speed;
+            ball.velocityY = (ball.velocityY > 0) ? ball.speed : -ball.speed;
+        }
+    }
+
+    // AI for opponent's paddle
+    function updateOpponentPaddle() {
+        const opponentSpeed = 7;
+        if (rightPaddle.y + paddleHeight / 2 < ball.y && rightPaddle.y + paddleHeight < canvas.height) {
+           
+            rightPaddle.y += opponentSpeed;
+        } else if (rightPaddle.y + paddleHeight / 2 > ball.y && rightPaddle.y > 0) {
+            rightPaddle.y -= opponentSpeed;
+        }
+    }
+
+    // Event listener for keyboard controls
+    document.addEventListener("keydown", function (event) {
+        if (event.key === "ArrowUp" && leftPaddle.y > 0) {
+            leftPaddle.y -= 20;
+        }
+        if (event.key === "ArrowDown" && leftPaddle.y + paddleHeight < canvas.height) {
+            leftPaddle.y += 20;
+        }
+    });
+
+    // Event listener for touch controls on mobile devices
+    canvas.addEventListener("touchmove", function (event) {
+        const touchY = event.touches[0].clientY - canvas.offsetTop;
+        if (touchY > leftPaddle.y && touchY < leftPaddle.y + paddleHeight) {
+            leftPaddle.y = touchY - paddleHeight / 2;
+        }
+    });
+
+    // Call updateOpponentPaddle every 50ms
+    setInterval(updateOpponentPaddle, 50);
+
+    // Start the game loop
+    draw();
+</script>
+</body>
+</html>
